@@ -12,6 +12,7 @@ for m in r["data"]:
         market = m
 if not market:
     exit("No active market found with the specified tags.")
+print(market)
 tokens = market["tokens"]
 tokens = {
     "yes": tokens["yes"],
@@ -57,7 +58,7 @@ def print_orderbook(data, token_side='yes'):
 def connect():
     print(f"Connected! Subscribing to {slug}...")
     sio.emit('subscribe_market_prices', {
-        'marketAddresses': [tokens['yes']]
+        'marketSlugs': [slug]
     })
 
 
@@ -73,14 +74,10 @@ def on_orderbook(data):
     print("updating orderbook...")
     print_orderbook(data, token_side='yes')
 
-def test():
-    print("testing")
-sio.on('orderbookUpdate', test)
 
-@sio.on('*')
-def catch_all(event, data):
-    print("EVENT:", event)
-    print("DATA:", data)
+sio.on('orderbookUpdate', on_orderbook)
+
+
 sio.connect(
     'wss://ws.limitless.exchange/markets',
     transports=['websocket'],
