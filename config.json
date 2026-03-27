@@ -1,0 +1,30 @@
+{
+  "BTC": {
+    "m15": true,
+    "hourly": true,
+    "daily": true,
+    "weekly": true,
+    "monthly": true
+  },
+  "ETH": {
+    "m15": true,
+    "hourly": true,
+    "daily": true,
+    "weekly": true,
+    "monthly": true
+  },
+  "SOL": {
+    "m15": true,
+    "hourly": true,
+    "daily": true,
+    "weekly": true,
+    "monthly": true
+  },
+  "XRP": {
+    "m15": true,
+    "hourly": true,
+    "daily": true,
+    "weekly": true,
+    "monthly": true
+  }
+}
