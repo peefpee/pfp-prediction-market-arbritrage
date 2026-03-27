@@ -1,98 +1,89 @@
-import requests
-import time
-import socketio
-import os
-url = "https://api.limitless.exchange/markets/active"
-apikey= "lmts_Spe3xciKBUdmClYO_qY8lL9HmHdiMg815QNLh0KEetwOUCabyFNPE9NoK5vc"
-response = requests.get(url)
-market = None
-r = response.json()
-for m in r["data"]:
-    if "Minutes 15" in m["tags"] and "eth" in m["slug"]  :
-        market = m
-if not market:
-    exit("No active market found with the specified tags.")
-print(market)
-tokens = market["tokens"]
-tokens = {
-    "yes": tokens["yes"],
-    "no": tokens["no"]
-}
-slug = market["slug"]
-sio = socketio.Client()
-def print_orderbook(data, token_side='yes'):
-    orderbook = data.get('orderbook', {})
-    timestamp = data.get('timestamp', '')
+import asyncio
 
-    bids = orderbook.get('bids', [])
-    asks = orderbook.get('asks', [])
+from limitless_sdk.api import HttpClient
+from limitless_sdk.markets import MarketFetcher
 
-    # Print raw first time so we can see the actual structure
-    print("RAW SAMPLE:", bids[:1], asks[:1])
+SIZE_SCALE = 1_000_000
+
+
+def format_size(size):
+    if size is None:
+        return "n/a"
+    return f"{float(size) / SIZE_SCALE:,.4f}"
+
+
+def format_level(level):
+    return f"{level.price:>7.4f} | {format_size(level.size):>12} | {level.side:<4}"
+
+
+def select_market(markets):
+    for market in markets:
+        if "Minutes 15" in market.tags and "eth" in market.slug.lower():
+            return market
+    return None
+
+
+def print_orderbook_snapshot(market, orderbook):
+    bids = sorted(orderbook.bids, key=lambda level: level.price, reverse=True)
+    asks = sorted(orderbook.asks, key=lambda level: level.price)
 
     best_bid = bids[0] if bids else None
     best_ask = asks[0] if asks else None
+    token_side = "UP" if market.tokens and orderbook.token_id == market.tokens.yes else "UNKNOWN"
 
-    print(f"\n{'='*40}")
-    print(f"Market: {data.get('marketSlug')}  [{token_side.upper()} token]")
-    print(f"Time:   {timestamp}")
-    print(f"{'='*40}")
+    print(f"\n{'=' * 72}")
+    print(f"Market: {market.title}")
+    print(f"Slug:   {market.slug}")
+    if market.tokens:
+        print(f"UP:     {market.tokens.yes}")
+        print(f"DOWN:   {market.tokens.no}")
+    print(f"Book:   {orderbook.token_id} [{token_side}]")
+    print(
+        f"Adjusted Midpoint: {orderbook.adjusted_midpoint:.4f}"
+        f" | Last Trade: {orderbook.last_trade_price:.4f}"
+    )
+    print(
+        f"Max Spread: {orderbook.max_spread}"
+        f" | Min Size: {format_size(orderbook.min_size)}"
+    )
 
-    if best_bid:
-        print(f"Best Bid: {best_bid.get('price')}  (size: {best_bid.get('size')})")
-    if best_ask:
-        print(f"Best Ask: {best_ask.get('price')}  (size: {best_ask.get('size')})")
+    if best_bid is None and best_ask is None:
+        print("No liquidity yet")
+        return
 
-    print(f"\n{'--- Asks ---':>20}")
-    for ask in reversed(asks[:10]):
-        print(f"  {ask.get('price'):>10}  |  {ask.get('size')}")
+    if best_bid is not None:
+        print(f"Best Bid: {best_bid.price:.4f} | Size: {format_size(best_bid.size)}")
+    if best_ask is not None:
+        print(f"Best Ask: {best_ask.price:.4f} | Size: {format_size(best_ask.size)}")
+    if best_bid is not None and best_ask is not None:
+        print(f"Spread:   {best_ask.price - best_bid.price:.4f}")
 
-    print(f"{'--- Bids ---':>20}")
-    for bid in bids[:10]:
-        print(f"  {bid.get('price'):>10}  |  {bid.get('size')}")
+    print("\nAsks")
+    print(" Price  |        Tokens | Side")
+    for ask in asks[:5]:
+        print(format_level(ask))
 
-
-
-
-@sio.event
-def connect():
-    print(f"Connected! Subscribing to {slug}...")
-    sio.emit('subscribe_market_prices', {
-        'marketSlugs': [slug]
-    })
-
-
-
-@sio.event
-def disconnect():
-    print("Disconnected.")
-
-
-
-
-def on_orderbook(data):
-    print("updating orderbook...")
-    print_orderbook(data, token_side='yes')
+    print("\nBids")
+    print(" Price  |        Tokens | Side")
+    for bid in bids[:5]:
+        print(format_level(bid))
 
 
-sio.on('orderbookUpdate', on_orderbook)
+async def main():
+    http_client = HttpClient()
+    market_fetcher = MarketFetcher(http_client)
+
+    try:
+        active = await market_fetcher.get_active_markets()
+        market = select_market(active.data)
+        if market is None:
+            raise SystemExit("No active ETH 15-minute market found.")
+
+        market = await market_fetcher.get_market(market.slug)
+        orderbook = await market_fetcher.get_orderbook(market.slug)
+        print_orderbook_snapshot(market, orderbook)
+    finally:
+        await http_client.close()
 
 
-sio.connect(
-    'wss://ws.limitless.exchange/markets',
-    transports=['websocket'],
-    headers={'X-API-Key': apikey}
-)
-sio.wait() 
-
-
-
-#if market:
-#        print(f"Market: {market['slug']} RELOADING")
-#        url = f"https://api.limitless.exchange/markets/{market['slug']}/orderbook"
-#    
-#        response = requests.get(url)
-#        print(response.json())
-#        for i in response.json()["asks"]:
-#            print(f"ask price: {i['price']} size: {i['size']}")
-
+asyncio.run(main())

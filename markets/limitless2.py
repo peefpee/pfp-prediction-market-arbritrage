@@ -1,94 +1,72 @@
 import os
-import requests
-import socketio
+from pathlib import Path
+import sys
+import time
 
-API_KEY = os.getenv("LIMITLESS_API_KEY")  # rotate your exposed key
-WS_URL = "wss://ws.limitless.exchange"
-NAMESPACE = "/markets"
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-# --- find one active ETH 15-min market ---
-url = "https://api.limitless.exchange/markets/active"
-response = requests.get(url, timeout=15)
-response.raise_for_status()
-
-market = None
-for m in response.json()["data"]:
-    if "Minutes 15" in m.get("tags", []) and "eth" in m.get("slug", ""):
-        market = m
-        break
-
-if not market:
-    raise SystemExit("No active market found with the specified tags.")
-
-slug = market["slug"]
-print("Using slug:", slug)
-
-# --- socket client with debug logging ---
-sio = socketio.Client(reconnection=True)
-
-def print_orderbook(data):
-    orderbook = data.get("orderbook", {})
-    bids = orderbook.get("bids", [])
-    asks = orderbook.get("asks", [])
-
-    # Best prices
-    best_bid = float(bids[0]["price"]) if bids else None
-    best_ask = float(asks[0]["price"]) if asks else None
-
-    if best_bid is None or best_ask is None:
-        print("No liquidity yet")
-        return
-
-    # UP = YES side (as given)
-    up_best_ask = best_ask
-    up_best_bid = best_bid
-
-    # DOWN = NO side (complement)
-    down_best_ask = round(1 - up_best_bid, 4)
-    down_best_bid = round(1 - up_best_ask, 4)
-
-    print(f"UP   : Best Ask : {up_best_ask:.2f} | Best Bid : {up_best_bid:.2f}")
-    print(f"DOWN : Best Ask : {down_best_ask:.2f} | Best Bid : {down_best_bid:.2f}")
+from libaries.limitless import LimitlessClient
 
 
-
-@sio.event(namespace=NAMESPACE)
-def connect():
-    print(f"Connected to {NAMESPACE}")
-    payload = {"marketSlugs": [slug]}
-    print("Emitting subscribe_market_prices:", payload)
-    sio.emit("subscribe_market_prices", payload, namespace=NAMESPACE)
-
-@sio.event(namespace=NAMESPACE)
-def disconnect():
-    print("Disconnected from /markets")
-
-@sio.on("system", namespace=NAMESPACE) # pyright: ignore[reportOptionalCall]
-def on_system(data):
-    pass
-
-@sio.on("authenticated", namespace=NAMESPACE) # pyright: ignore[reportOptionalCall]
-def on_authenticated(data):
-    pass
-
-@sio.on("exception", namespace=NAMESPACE) # pyright: ignore[reportOptionalCall]
-def on_exception(data):
-    pass
-
-@sio.on("orderbookUpdate", namespace=NAMESPACE) # pyright: ignore[reportOptionalCall]
-def on_orderbook(data):
-    print_orderbook(data)
-
-# optional: if you also want AMM price events, you'd subscribe with marketAddresses
+def format_price(price):
+    if price is None:
+        return "N/A"
+    return format(price.normalize(), "f")
 
 
-headers = {"X-API-Key": API_KEY} if API_KEY else None
+def snapshot_key(snapshot):
+    return (
+        snapshot.get("yes", {}).get("bid"),
+        snapshot.get("yes", {}).get("ask"),
+        snapshot.get("no", {}).get("bid"),
+        snapshot.get("no", {}).get("ask"),
+    )
 
-sio.connect(
-    WS_URL,
-    transports=["websocket"],
-    namespaces=[NAMESPACE],
-    headers=headers,
-)
 
-sio.wait()
+def print_orderbook(snapshot):
+    print(f"Market: {snapshot.get('market_slug', 'unknown')}")
+    print(
+        "YES best bid/ask:",
+        f"{format_price(snapshot['yes']['bid'])} / {format_price(snapshot['yes']['ask'])}",
+    )
+    print(
+        "NO  best bid/ask:",
+        f"{format_price(snapshot['no']['bid'])} / {format_price(snapshot['no']['ask'])}",
+    )
+    print(f"Timestamp: {snapshot.get('timestamp', 'unknown')}")
+    print()
+
+
+def main():
+    client = LimitlessClient(
+        api_key=os.getenv("LIMITLESS_API_KEY"),
+        timeframe=os.getenv("MARKET_TIMEFRAME", "auto"),
+    ).connect()
+
+    try:
+        if not client.wait_for_prices(timeout=15):
+            raise SystemExit("Timed out waiting for Limitless prices.")
+
+        last_seen = None
+        while True:
+            snapshot = client.get_latest_prices()
+            if snapshot is None:
+                time.sleep(0.1)
+                continue
+
+            current = snapshot_key(snapshot)
+            if current != last_seen:
+                print_orderbook(snapshot)
+                last_seen = current
+
+            time.sleep(0.1)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        client.close()
+
+
+if __name__ == "__main__":
+    main()
