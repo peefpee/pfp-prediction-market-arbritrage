@@ -1,3 +1,11 @@
+<<<<<<< HEAD
+from pathlib import Path
+import runpy
+
+
+if __name__ == "__main__":
+    runpy.run_path(str(Path(__file__).with_name("limitless2.py")), run_name="__main__")
+=======
 import asyncio
 
 from limitless_sdk.api import HttpClient
@@ -87,3 +95,4 @@ async def main():
 
 
 asyncio.run(main())
+>>>>>>> e19d88b8104a00cf8d3d4e251a434bad006b37ae

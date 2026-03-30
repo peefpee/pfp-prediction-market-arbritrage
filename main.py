@@ -1,13 +1,21 @@
+<<<<<<< HEAD
+import os
+import time
+from decimal import Decimal
+=======
 import json
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor
 from decimal import Decimal
 from pathlib import Path
+>>>>>>> e19d88b8104a00cf8d3d4e251a434bad006b37ae
 
 from libaries.limitless import LimitlessClient
 from libaries.polymarket import PolymarketClient
 
+<<<<<<< HEAD
+=======
 CONFIG_PATH = Path(__file__).resolve().parent / "config.json"
 SUPPORTED_COINS = ("BTC", "ETH", "SOL", "XRP")
 SUPPORTED_TIMEFRAMES = ("m15", "hourly", "daily", "weekly", "monthly")
@@ -16,6 +24,7 @@ DEFAULT_CONFIG = {
     for coin in SUPPORTED_COINS
 }
 
+>>>>>>> e19d88b8104a00cf8d3d4e251a434bad006b37ae
 
 def format_price(price):
     if price is None:
@@ -91,6 +100,17 @@ def execution_threshold(arbitrage):
     return polymarket_fee + limitless_fee + combined_slippage + buffer
 
 
+<<<<<<< HEAD
+def print_opportunity(limitless_prices, polymarket_prices):
+    arbitrage = best_arbitrage(limitless_prices, polymarket_prices)
+    if arbitrage is None:
+        return
+
+    required_edge = execution_threshold(arbitrage)
+    if required_edge is None or arbitrage["difference"] <= required_edge:
+        return
+
+=======
 def load_config(path=CONFIG_PATH):
     if not path.exists():
         path.write_text(json.dumps(DEFAULT_CONFIG, indent=2) + "\n")
@@ -222,6 +242,7 @@ def print_opportunity(opportunity):
     polymarket_prices = opportunity["polymarket"]
 
     print(f"coin : {opportunity['coin']} timeframe : {opportunity['timeframe']}")
+>>>>>>> e19d88b8104a00cf8d3d4e251a434bad006b37ae
     print(f"limitless url : {limitless_prices.get('market_url', 'N/A')}")
     print(f"polymarket url : {polymarket_prices.get('market_url', 'N/A')}")
     print(
@@ -238,15 +259,71 @@ def print_opportunity(opportunity):
         f"NO - bid : {format_price(polymarket_prices['no']['bid'])}",
         f"ask : {format_price(polymarket_prices['no']['ask'])}",
     )
+<<<<<<< HEAD
+    print(f"gap : {arbitrage['gap']}")
+    print(f"difference : {format_price(arbitrage['difference'])}")
+    print(
+        "arbitrage possible : YES",
+        f"(required edge: {format_price(required_edge)})",
+=======
     print(f"gap : {opportunity['gap']}")
     print(f"difference : {format_price(opportunity['difference'])}")
     print(
         "arbitrage possible : YES",
         f"(required edge: {format_price(opportunity['required_edge'])})",
+>>>>>>> e19d88b8104a00cf8d3d4e251a434bad006b37ae
     )
     print()
 
 
+<<<<<<< HEAD
+def prompt_market_slugs():
+    limitless_slug = input(
+        "Enter the Limitless market slug: "
+    ).strip()
+    polymarket_slug = input(
+        "Enter the Polymarket event slug "
+        "(example: solana-up-or-down-march-28-2026-8am-et): "
+    ).strip()
+
+    if not limitless_slug or not polymarket_slug:
+        raise SystemExit("Both market slugs are required.")
+
+    return limitless_slug, polymarket_slug
+
+
+def main():
+    limitless_slug, polymarket_slug = prompt_market_slugs()
+
+    limitless_client = LimitlessClient(
+        api_key=os.getenv("LIMITLESS_API_KEY"),
+        market_slug=limitless_slug,
+    ).connect()
+    polymarket_client = PolymarketClient(
+        event_slug=polymarket_slug,
+    ).connect()
+
+    try:
+        if not limitless_client.wait_for_prices(timeout=15):
+            raise SystemExit("Timed out waiting for Limitless prices.")
+
+        if not polymarket_client.wait_for_prices(timeout=15):
+            raise SystemExit("Timed out waiting for Polymarket prices.")
+
+        last_seen = None
+
+        while True:
+            limitless_prices = limitless_client.get_latest_prices()
+            polymarket_prices = polymarket_client.get_latest_prices()
+            if limitless_prices is None or polymarket_prices is None:
+                time.sleep(0.1)
+                continue
+
+            current = (snapshot_key(limitless_prices), snapshot_key(polymarket_prices))
+            if current != last_seen:
+                print_opportunity(limitless_prices, polymarket_prices)
+                last_seen = current
+=======
 def main():
     config = load_config()
     detectors = build_detectors(config)
@@ -275,13 +352,19 @@ def main():
             opportunities.sort(key=lambda item: item["net_edge"], reverse=True)
             for opportunity in opportunities:
                 print_opportunity(opportunity)
+>>>>>>> e19d88b8104a00cf8d3d4e251a434bad006b37ae
 
             time.sleep(0.1)
     except KeyboardInterrupt:
         pass
     finally:
+<<<<<<< HEAD
+        limitless_client.close()
+        polymarket_client.close()
+=======
         for detector in detectors:
             detector.close()
+>>>>>>> e19d88b8104a00cf8d3d4e251a434bad006b37ae
 
 
 if __name__ == "__main__":

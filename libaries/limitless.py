@@ -7,9 +7,14 @@ import socketio
 
 WS_URL = "wss://ws.limitless.exchange"
 NAMESPACE = "/markets"
+<<<<<<< HEAD
+MARKET_API_URL_PREFIX = "https://api.limitless.exchange/markets/"
+MARKET_URL_PREFIX = "https://limitless.exchange/markets/"
+=======
 ACTIVE_MARKETS_URL = "https://api.limitless.exchange/markets/active"
 MARKET_URL_PREFIX = "https://limitless.exchange/markets/"
 SUPPORTED_TIMEFRAMES = ("m15", "hourly", "daily", "weekly", "monthly")
+>>>>>>> e19d88b8104a00cf8d3d4e251a434bad006b37ae
 TIMEFRAME_TAGS = {
     "m15": {"minutes 15", "15m", "15 min", "15 minute", "15 minutes"},
     "hourly": {"hourly", "1h", "1 hour", "60m"},
@@ -24,6 +29,15 @@ class LimitlessClient:
         self,
         *,
         api_key=None,
+<<<<<<< HEAD
+        market_slug=None,
+    ):
+        self.api_key = api_key
+        self.market_slug = market_slug
+
+        self.market = None
+        self.coin = None
+=======
         coinslug="eth",
         timeframe="auto",
         active_markets_url=ACTIVE_MARKETS_URL,
@@ -34,6 +48,7 @@ class LimitlessClient:
         self.active_markets_url = active_markets_url
 
         self.market = None
+>>>>>>> e19d88b8104a00cf8d3d4e251a434bad006b37ae
         self.slug = None
         self.tokens = None
         self.selected_timeframe = None
@@ -49,10 +64,31 @@ class LimitlessClient:
         self.sio.on("exception", self._on_exception, namespace=NAMESPACE)
         self.sio.on("orderbookUpdate", self._on_orderbook, namespace=NAMESPACE)
 
+<<<<<<< HEAD
+    def fetch_market(self, slug=None):
+        market_slug = slug or self.market_slug
+        if not market_slug:
+            raise SystemExit("A Limitless market slug is required.")
+
+        response = requests.get(f"{MARKET_API_URL_PREFIX}{market_slug}", timeout=15)
+=======
     def list_active_markets(self):
         response = requests.get(self.active_markets_url, timeout=15)
+>>>>>>> e19d88b8104a00cf8d3d4e251a434bad006b37ae
         response.raise_for_status()
+        return response.json()
 
+<<<<<<< HEAD
+    def connect(self):
+        if self.market is None:
+            self.market = self.fetch_market()
+
+        self.slug = self.market["slug"]
+        self.coin = self._market_coin(self.market)
+        self.tokens = [self.market["tokens"]["yes"], self.market["tokens"]["no"]]
+        if self.selected_timeframe is None:
+            self.selected_timeframe = self._market_timeframe(self.market)
+=======
         markets_by_timeframe = {}
         for market in response.json()["data"]:
             if self.coinslug.lower() not in market.get("slug", "").lower():
@@ -90,6 +126,7 @@ class LimitlessClient:
 
         self.slug = self.market["slug"]
         self.tokens = [self.market["tokens"]["yes"], self.market["tokens"]["no"]]
+>>>>>>> e19d88b8104a00cf8d3d4e251a434bad006b37ae
 
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
@@ -134,7 +171,11 @@ class LimitlessClient:
 
         return {
             "venue": "limitless",
+<<<<<<< HEAD
+            "coin": self.coin,
+=======
             "coin": self.coinslug.upper(),
+>>>>>>> e19d88b8104a00cf8d3d4e251a434bad006b37ae
             "market_slug": data.get("marketSlug", self.slug),
             "market_url": f"{MARKET_URL_PREFIX}{data.get('marketSlug', self.slug)}",
             "timestamp": data.get("timestamp"),
@@ -184,6 +225,17 @@ class LimitlessClient:
         return Decimal("1") - price
 
     @classmethod
+<<<<<<< HEAD
+    def _market_coin(cls, market):
+        return cls._slug_coin(market.get("slug", ""))
+
+    @staticmethod
+    def _slug_coin(slug):
+        base = str(slug).strip().split("-", 1)[0].lower()
+        if base in {"btc", "eth", "sol", "xrp"}:
+            return base.upper()
+        return base.upper() if base else "UNKNOWN"
+=======
     def _normalize_requested_timeframe(cls, timeframe):
         if timeframe is None:
             return "auto"
@@ -203,6 +255,7 @@ class LimitlessClient:
             "auto": "auto",
         }
         return aliases.get(normalized, normalized)
+>>>>>>> e19d88b8104a00cf8d3d4e251a434bad006b37ae
 
     @classmethod
     def _market_timeframe(cls, market):
