@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-=======
-import os
->>>>>>> e19d88b8104a00cf8d3d4e251a434bad006b37ae
 from pathlib import Path
 import sys
 import time
@@ -43,17 +39,8 @@ def print_orderbook(snapshot):
 
 
 def main():
-<<<<<<< HEAD
-    event_slug = input("Enter the Polymarket event slug: ").strip()
-    if not event_slug:
-        raise SystemExit("A Polymarket event slug is required.")
-
-    client = PolymarketClient(
-        event_slug=event_slug,
-=======
     client = PolymarketClient(
         timeframe=os.getenv("MARKET_TIMEFRAME", "auto"),
->>>>>>> e19d88b8104a00cf8d3d4e251a434bad006b37ae
     ).connect()
 
     try:

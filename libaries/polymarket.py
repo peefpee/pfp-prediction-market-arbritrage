@@ -1,21 +1,12 @@
 import json
 import threading
 from copy import deepcopy
-<<<<<<< HEAD
-=======
 from datetime import datetime, timezone
->>>>>>> e19d88b8104a00cf8d3d4e251a434bad006b37ae
 from decimal import Decimal
 
 import requests
 import websocket
 
-<<<<<<< HEAD
-EVENT_SLUG_URL_PREFIX = "https://gamma-api.polymarket.com/events/slug/"
-MARKET_URL_PREFIX = "https://polymarket.com/event/"
-WS_URL = "wss://ws-subscriptions-clob.polymarket.com/ws/market"
-PING_INTERVAL_SECONDS = 3
-=======
 ETH_TAG_ID = 39
 COIN_TAG_IDS = {
     "btc": 235,
@@ -28,7 +19,6 @@ MARKET_URL_PREFIX = "https://polymarket.com/event/"
 WS_URL = "wss://ws-subscriptions-clob.polymarket.com/ws/market"
 PING_INTERVAL_SECONDS = 3
 SUPPORTED_TIMEFRAMES = ("m15", "hourly", "daily", "weekly", "monthly")
->>>>>>> e19d88b8104a00cf8d3d4e251a434bad006b37ae
 TIMEFRAME_LABELS = {
     "m15": {"15m"},
     "hourly": {"1h", "hourly"},
@@ -42,16 +32,6 @@ class PolymarketClient:
     def __init__(
         self,
         *,
-<<<<<<< HEAD
-        event_slug=None,
-        ping_interval_seconds=PING_INTERVAL_SECONDS,
-    ):
-        self.event_slug = event_slug
-        self.ping_interval_seconds = ping_interval_seconds
-
-        self.event = None
-        self.coin = None
-=======
         coin_tag_id=None,
         coinslug="eth",
         timeframe="auto",
@@ -63,7 +43,6 @@ class PolymarketClient:
         self.ping_interval_seconds = ping_interval_seconds
 
         self.event = None
->>>>>>> e19d88b8104a00cf8d3d4e251a434bad006b37ae
         self.market = None
         self.slug = None
         self.asset_ids = []
@@ -79,20 +58,6 @@ class PolymarketClient:
 
         self.ws = None
 
-<<<<<<< HEAD
-    def fetch_event(self, slug=None):
-        event_slug = slug or self.event_slug
-        if not event_slug:
-            raise SystemExit("A Polymarket event slug is required.")
-
-        response = requests.get(f"{EVENT_SLUG_URL_PREFIX}{event_slug}", timeout=15)
-        response.raise_for_status()
-        return response.json()
-
-    def connect(self):
-        if self.event is None:
-            self.event = self.fetch_event()
-=======
     def list_active_markets(self):
         now = datetime.now(timezone.utc)
         markets_by_timeframe = {}
@@ -155,26 +120,16 @@ class PolymarketClient:
             self.selected_timeframe, self.event = self.get_current_market()
         elif self.selected_timeframe is None:
             self.selected_timeframe = self._normalize_requested_timeframe(self.timeframe)
->>>>>>> e19d88b8104a00cf8d3d4e251a434bad006b37ae
 
         self.market = (self.event.get("markets") or [None])[0]
         if not self.market:
             raise SystemExit("Active Polymarket event is missing market data.")
 
         self.slug = self.event.get("slug")
-<<<<<<< HEAD
-        self.coin = self._event_coin(self.event)
-=======
->>>>>>> e19d88b8104a00cf8d3d4e251a434bad006b37ae
         self.raw_outcomes = self._parse_json_field(self.market.get("outcomes")) or []
         self.asset_ids = self._parse_json_field(self.market.get("clobTokenIds")) or []
         if len(self.asset_ids) < 2:
             raise SystemExit("Active Polymarket market is missing both token IDs.")
-<<<<<<< HEAD
-        if self.selected_timeframe is None:
-            self.selected_timeframe = self._event_timeframe(self.event)
-=======
->>>>>>> e19d88b8104a00cf8d3d4e251a434bad006b37ae
 
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
@@ -275,11 +230,7 @@ class PolymarketClient:
             if self._latest_prices is None:
                 self._latest_prices = {
                     "venue": "polymarket",
-<<<<<<< HEAD
-                    "coin": self.coin,
-=======
                     "coin": self.coinslug.upper(),
->>>>>>> e19d88b8104a00cf8d3d4e251a434bad006b37ae
                     "market_slug": self.slug,
                     "market_url": f"{MARKET_URL_PREFIX}{self.slug}",
                     "timestamp": timestamp,
@@ -329,8 +280,6 @@ class PolymarketClient:
             self._heartbeat_thread.join(timeout=2)
 
     @staticmethod
-<<<<<<< HEAD
-=======
     def _get_market_window(event):
         market_entries = event.get("markets") or [{}]
         start_time = (
@@ -349,7 +298,6 @@ class PolymarketClient:
         )
 
     @staticmethod
->>>>>>> e19d88b8104a00cf8d3d4e251a434bad006b37ae
     def _parse_json_field(value):
         if isinstance(value, str):
             return json.loads(value)
@@ -378,8 +326,6 @@ class PolymarketClient:
         return max(prices) if reverse else min(prices)
 
     @classmethod
-<<<<<<< HEAD
-=======
     def _normalize_requested_timeframe(cls, timeframe):
         if timeframe is None:
             return "auto"
@@ -401,7 +347,6 @@ class PolymarketClient:
         return aliases.get(normalized, normalized)
 
     @classmethod
->>>>>>> e19d88b8104a00cf8d3d4e251a434bad006b37ae
     def _event_timeframe(cls, event):
         labels = {
             str(tag.get("label") or "").strip().lower()
@@ -426,27 +371,5 @@ class PolymarketClient:
 
         return None
 
-<<<<<<< HEAD
-    @classmethod
-    def _event_coin(cls, event):
-        return cls._slug_coin(event.get("slug", ""))
-
-    @staticmethod
-    def _slug_coin(slug):
-        base = str(slug).strip().split("-", 1)[0].lower()
-        aliases = {
-            "bitcoin": "BTC",
-            "btc": "BTC",
-            "ethereum": "ETH",
-            "eth": "ETH",
-            "solana": "SOL",
-            "sol": "SOL",
-            "ripple": "XRP",
-            "xrp": "XRP",
-        }
-        return aliases.get(base, base.upper() if base else "UNKNOWN")
-
-=======
->>>>>>> e19d88b8104a00cf8d3d4e251a434bad006b37ae
 
 polymarketclient = PolymarketClient

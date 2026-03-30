@@ -40,19 +40,9 @@ def print_orderbook(snapshot):
 
 
 def main():
-<<<<<<< HEAD
-    market_slug = input("Enter the Limitless market slug: ").strip()
-    if not market_slug:
-        raise SystemExit("A Limitless market slug is required.")
-
-    client = LimitlessClient(
-        api_key=os.getenv("LIMITLESS_API_KEY"),
-        market_slug=market_slug,
-=======
     client = LimitlessClient(
         api_key=os.getenv("LIMITLESS_API_KEY"),
         timeframe=os.getenv("MARKET_TIMEFRAME", "auto"),
->>>>>>> e19d88b8104a00cf8d3d4e251a434bad006b37ae
     ).connect()
 
     try:
